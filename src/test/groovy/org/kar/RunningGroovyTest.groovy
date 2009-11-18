@@ -2,21 +2,34 @@ package org.kar
 
 class RunningGroovyTest extends GroovyTestCase
 {
-    def args = ['Hello', 'World'].asImmutable()
+    def static groovyScriptOne = "src/test/resources/TestScriptOne.groovy"
+    def static args = ['Hello', 'World'].asImmutable()
+
+    void testCompiledGroovyScript()
+    {
+        Binding binding = createBinding()
+        new TestScriptTwo(binding).run()
+        assertBinding(binding)
+    }
+
+    void testCompiledGroovyClass()
+    {
+        Binding binding = createBinding()
+        new TestClassTwo(binding).run()
+        assertBinding(binding)        
+    }
 
     void testGroovyShell()
     {
-        def binding = new Binding()
-
-        binding.setVariable('args', args)
+        Binding binding = createBinding()
         def shell = new GroovyShell(binding)
-        shell.evaluate(new File('src/test/resources/TestScriptOne.groovy'))
+        shell.evaluate(new File(groovyScriptOne))
         assertBinding(binding)
     }
 
     void testGroovyCall()
     {
-        def proc = "groovy src/test/resources/TestScriptOne.groovy Hello World".execute()
+        def proc = """groovy $groovyScriptOne Hello World""".execute()
         proc.waitFor()
         def args = proc.text.split()
         assert args[0] == 'Hello'
@@ -25,11 +38,9 @@ class RunningGroovyTest extends GroovyTestCase
 
     void testGroovyScriptEngine()
     {
-        def binding = new Binding()
-        def args = ['Hello', 'World']
-        binding.setVariable('args', args)
+        Binding binding = createBinding()
         def shell = new GroovyScriptEngine(new File('.').toURL())
-        shell.run('src/test/resources/TestScriptOne.groovy', binding)
+        shell.run(groovyScriptOne, binding)
         assertBinding(binding)
     }
 
@@ -37,11 +48,10 @@ class RunningGroovyTest extends GroovyTestCase
     {
         ClassLoader parent = getClass().getClassLoader();
         GroovyClassLoader loader = new GroovyClassLoader(parent);
-        Class groovyClass = loader.parseClass(new File("src/test/resources/TestScriptOne.groovy"));
 
-        def binding = new Binding()
-        def args = ['Hello', 'World']
-        binding.setVariable('args', args)
+        Class groovyClass = loader.parseClass(new File(groovyScriptOne));
+
+        Binding binding = createBinding()
         GroovyObject groovyObject = (GroovyObject) groovyClass.newInstance();
         groovyObject.binding = binding
         groovyObject.invokeMethod("run", null);
@@ -50,8 +60,7 @@ class RunningGroovyTest extends GroovyTestCase
 
     void testGroovyShellWithClass()
     {
-        def binding = new Binding()
-        binding.setVariable('args', args)
+        Binding binding = createBinding()
         def shell = new GroovyShell(binding)
         shell.evaluate(new File('src/test/resources/TestClassOne.groovy'))
         //assertBinding(binding)
@@ -68,9 +77,7 @@ class RunningGroovyTest extends GroovyTestCase
 
     void testGroovyScriptEngineWithClass()
     {
-        def binding = new Binding()
-        def args = ['Hello', 'World']
-        binding.setVariable('args', args)
+        Binding binding = createBinding()
         def shell = new GroovyScriptEngine(new File('.').toURL())
         println "running: "+shell.run('src/test/resources/TestClassOne.groovy', binding)
         //assertBinding(binding)
@@ -82,16 +89,13 @@ class RunningGroovyTest extends GroovyTestCase
         GroovyClassLoader loader = new GroovyClassLoader(parent);
         Class groovyClass = loader.parseClass(new File("src/test/resources/TestClassOne.groovy"));
 
-        def args = ['Hello', 'World']
         GroovyObject groovyObject = (GroovyObject) groovyClass.newInstance();
         groovyObject.invokeMethod("main", args);
     }
 
     void testGroovyShellOnJava()
     {
-        def binding = new Binding()
-        def args = ['Hello', 'World']
-        binding.setVariable('args', args)
+        Binding binding = createBinding()
         def shell = new GroovyShell(binding)
         shell.evaluate(new File('src/test/resources/TestJavaOne.java'))
         assert binding.getVariables().size() == 1
@@ -99,9 +103,7 @@ class RunningGroovyTest extends GroovyTestCase
 
     void testGroovyScriptEngineOnJava()
     {
-        def binding = new Binding()
-        def args = ['Hello', 'World'] as String[]
-        binding.setVariable('args', args)
+        Binding binding = createBinding()
         def shell = new GroovyScriptEngine(new File('.').toURL())
         shell.run('src/test/resources/TestJavaOne.java', '')
         assert binding.getVariables().size() == 1
@@ -125,13 +127,20 @@ class RunningGroovyTest extends GroovyTestCase
         assertTrue(proc.text.contains('cannot compile file with .java extension'))
     }
 
+    private Binding createBinding()
+    {
+        Binding binding = new Binding()
+        binding.setVariable ('args', args)
+        return binding
+    }
+
     private def assertBinding(Binding binding)
     {
         assert binding.variables.size() == 3
         assert binding.variables.args.value[0].toString() == args[0]
-        assert binding.variables.args.value[1].toString() == 'World'
-        assert binding.variables.result.value.toString() == 'Hello World'
-        assert binding.variables.myArgs.value[0].toString() == 'Hello'
-        assert binding.variables.myArgs.value[1].toString() == 'World'
+        assert binding.variables.args.value[1].toString() == args[1]
+        assert binding.variables.result.value.toString() == args.join(' ')
+        assert binding.variables.myArgs.value[0].toString() == args[0]
+        assert binding.variables.myArgs.value[1].toString() == args[1]
     }
 }

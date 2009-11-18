@@ -1,4 +1,3 @@
+package org.kar
 myArgs = args
 result = args.join(' ')
-println result
-println myArgs
