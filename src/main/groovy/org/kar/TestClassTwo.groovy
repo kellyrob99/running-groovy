@@ -14,7 +14,6 @@ class TestClassTwo
         {
             setVariable('myArgs', getVariable('args'))
             setVariable('result', getVariable('args')?.join(' '))
-
         }
     }
 }

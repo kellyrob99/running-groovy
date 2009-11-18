@@ -1,6 +1,6 @@
 class TestClassOne
 {
-    def main(args)
+    static void main(String[] args)
     {
         def myArgs = args
         def result = args.join(' ')
