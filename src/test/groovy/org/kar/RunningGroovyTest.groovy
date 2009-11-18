@@ -3,8 +3,12 @@ package org.kar
 class RunningGroovyTest extends GroovyTestCase
 {
     def static groovyScriptOne = "src/test/resources/TestScriptOne.groovy"
-    def groovyClassOne = 'src/test/resources/TestClassOne.groovy'
+    def static groovyClassOne = 'src/test/resources/TestClassOne.groovy'
+    def static javaFile = 'src/test/resources/TestJavaOne.java'
     def static args = ['Hello', 'World'].asImmutable()
+
+    /*****************************************************************************************************************/
+    /* Tests against compiled code. */
 
     /**
      * Test that a compiled script can expose data in the Binding.
@@ -26,6 +30,9 @@ class RunningGroovyTest extends GroovyTestCase
         new TestClassTwo(binding).run()
         assertBinding(binding)        
     }
+
+    /*****************************************************************************************************************/
+    /* Tests against uncompiled Groovy scripts.   */
 
     /**
      * Test dynamic execution of a Groovy script using GroovyShell that exposes data in the shared Binding.
@@ -66,20 +73,15 @@ class RunningGroovyTest extends GroovyTestCase
      */
     void testGroovyClassLoader()
     {
-        ClassLoader parent = getClass().getClassLoader();
-        GroovyClassLoader loader = new GroovyClassLoader(parent);
-
-        Class groovyClass = loader.parseClass(new File(groovyScriptOne));
-
-        Binding binding = createBinding()
-        GroovyObject groovyObject = (GroovyObject) groovyClass.newInstance();
-        groovyObject.binding = binding
-        groovyObject.invokeMethod("run", null);
-        assertBinding(binding)
+        useClassLoader(groovyScriptOne)
     }
 
+    /*****************************************************************************************************************/
+    /* Tests against uncompiled Groovy classes. */
+    
     /**
-     * BROKEN - no parameters are passed in from the binding to the main method. shell.run(...) can't find main method?
+     * Test dynamic execution of a Groovy class using GroovyShell. Calls the 'main' method and we redirect
+     * System.out temporarily to capture the output.
      */
     void testGroovyShellWithClass()
     {
@@ -87,21 +89,19 @@ class RunningGroovyTest extends GroovyTestCase
         def newOut = new PrintStream(buf)
         def saveOut = System.out
         System.out = newOut
-        Binding binding = createBinding()
-        def shell = new GroovyShell(binding)
-
-        shell.evaluate(new File(groovyClassOne))
+        def shell = new GroovyShell()
+        shell.run(new File(groovyClassOne),  new ArrayList(args) as String[] )
         System.out = saveOut
-        println "buf = "+buf.toString()
-        //assertBinding(binding)
+        def result = buf.toString().split()
+        assert result[0] == args[0]
+        assert result[1] == args[1]
     }
 
     /**
-     * 
+     * Test dynamic execution of a Groovy class passing parameters on the command line.
      */
     void testGroovyCallWithClass()
     {
-        println "testGroovyCallWithClass"
         def proc = """groovy $groovyClassOne Hello World""".execute()
         proc.waitFor()
         def result = proc.text.split()
@@ -109,30 +109,38 @@ class RunningGroovyTest extends GroovyTestCase
         assert result[1] == 'World'
     }
 
+    /**
+     * BROKEN
+     */
     void testGroovyScriptEngineWithClass()
     {
         Binding binding = createBinding()
         def shell = new GroovyScriptEngine(new File('.').toURL())
         println "testGroovyScriptEngineWithClass = "+shell.run(groovyClassOne, binding)
+        println binding.variables
 
     }
 
+    /**
+     * Test dynamic execution of a Groovy class using GroovyClassLoader that exposes data in the shared Binding.
+     */
     void testGroovyClassLoaderWithClass()
     {
-        ClassLoader parent = getClass().getClassLoader();
-        GroovyClassLoader loader = new GroovyClassLoader(parent);
-
-        Class groovyClass = loader.parseClass(new File(groovyClassOne));
-
-        GroovyObject groovyObject = (GroovyObject) groovyClass.newInstance();
-        groovyObject.invokeMethod("main", new ArrayList(args) as String[]);
+        useClassLoader(groovyClassOne)
     }
 
+
+    /*****************************************************************************************************************/
+    /* Tests against uncompiled Java classes.*/
+
+    /**
+     *
+     */
     void testGroovyShellOnJava()
     {
         Binding binding = createBinding()
         def shell = new GroovyShell(binding)
-        shell.evaluate(new File('src/test/resources/TestJavaOne.java'))
+        shell.evaluate(new File(javaFile))
         assert binding.getVariables().size() == 1
     }
 
@@ -140,7 +148,7 @@ class RunningGroovyTest extends GroovyTestCase
     {
         Binding binding = createBinding()
         def shell = new GroovyScriptEngine(new File('.').toURL())
-        shell.run('src/test/resources/TestJavaOne.java', '')
+        shell.run(javaFile, '')
         assert binding.getVariables().size() == 1
     }
 
@@ -148,18 +156,35 @@ class RunningGroovyTest extends GroovyTestCase
     {
         ClassLoader parent = getClass().getClassLoader();
         GroovyClassLoader loader = new GroovyClassLoader(parent);
-        Class javaClass = loader.parseClass(new File("src/test/resources/TestJavaOne.java"));
+        Class javaClass = loader.parseClass(new File(javaFile));
 
-        def args = ['Hello', 'World']
         def groovyObject = javaClass.newInstance();
-        groovyObject.invokeMethod("main", args as String[]);
+        groovyObject.invokeMethod("main", new ArrayList(args) as String[]);
     }
 
+    /**
+     * Confirm that executing a Java file using the Groovy command line is not allowed.
+     */
     void testGroovyJavaCall()
     {
-        def proc = "groovy src/test/resources/TestJavaOne.java Hello World".execute()
+        def proc = """groovy $javaFile Hello World""".execute()
         proc.waitFor()
         assertTrue(proc.text.contains('cannot compile file with .java extension'))
+    }
+
+
+    private def useClassLoader(fileName)
+    {
+        ClassLoader parent = getClass().getClassLoader();
+        GroovyClassLoader loader = new GroovyClassLoader(parent);
+
+        Class groovyClass = loader.parseClass(new File(fileName));
+
+        Binding binding = createBinding()
+        GroovyObject groovyObject = (GroovyObject) groovyClass.newInstance();
+        groovyObject.binding = binding
+        groovyObject.invokeMethod("run", null);
+        assertBinding(binding)
     }
 
     private Binding createBinding()
