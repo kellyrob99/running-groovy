@@ -39,15 +39,14 @@ class RunningGroovyClassesTest extends GroovyTestCase
     }
 
     /**
-     * BROKEN
+     * Test dynamic execution of a Groovy class with GroovyScriptEngine and noting that the binding is essentially ignored.
      */
     void testGroovyScriptEngineWithClass()
     {
         Binding binding = helper.createBinding()
         def gse = new GroovyScriptEngine(new File('.').toURL())
-        println "testGroovyScriptEngineWithClass = "+gse.run(groovyClassOne, binding)
-        println binding.variables
-        fail('fix this test please')
+        gse.run(groovyClassOne, binding)
+        assert binding.variables.size() == 2
     }
 
     /**
