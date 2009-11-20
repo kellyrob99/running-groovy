@@ -1,6 +1,6 @@
 package org.kar
 
-class RunningGroovyScripts extends GroovyTestCase
+class RunningGroovyScriptsTest extends GroovyTestCase
 {
     def final static groovyScriptOne = "src/test/resources/TestScriptOne.groovy"
     def helper = new RunningGroovyTestHelper()
