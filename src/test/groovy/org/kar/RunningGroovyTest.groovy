@@ -4,32 +4,10 @@ class RunningGroovyTest extends GroovyTestCase
 {
     def static groovyScriptOne = "src/test/resources/TestScriptOne.groovy"
     def static groovyClassOne = 'src/test/resources/TestClassOne.groovy'
-    def static javaFile = 'src/test/resources/TestJavaOne.java'
+    def static javaFileOne = 'src/test/resources/TestJavaOne.java'
+    def static javaFileTwo = 'src/test/resources/TestJavaTwo.java'
     def static args = ['Hello', 'World'].asImmutable()
-
-    /*****************************************************************************************************************/
-    /* Tests against compiled code. */
-
-    /**
-     * Test that a compiled script can expose data in the Binding.
-     */
-    void testCompiledGroovyScript()
-    {
-        Binding binding = createBinding()
-        new TestScriptTwo(binding).run()
-        assertBinding(binding)
-    }
-
-    /**
-     * Test that a compiled groovy class can expose data in the Binding. Script behaviour is simulated by
-     * implementing a 'run' method and supplying a constructor with a Binding param.
-     */
-    void testCompiledGroovyClass()
-    {
-        Binding binding = createBinding()
-        new TestClassTwo(binding).run()
-        assertBinding(binding)        
-    }
+    def helper = new RunningGroovyTestHelper()
 
     /*****************************************************************************************************************/
     /* Tests against uncompiled Groovy scripts.   */
@@ -39,10 +17,10 @@ class RunningGroovyTest extends GroovyTestCase
      */
     void testGroovyShell()
     {
-        Binding binding = createBinding()
+        Binding binding = helper.createBinding()
         def shell = new GroovyShell(binding)
         shell.evaluate(new File(groovyScriptOne))
-        assertBinding(binding)
+        helper.assertBinding(binding)
     }
 
     /**
@@ -62,10 +40,10 @@ class RunningGroovyTest extends GroovyTestCase
      */
     void testGroovyScriptEngine()
     {
-        Binding binding = createBinding()
+        Binding binding = helper.createBinding()
         def gse = new GroovyScriptEngine(new File('.').toURL())
         gse.run(groovyScriptOne, binding)
-        assertBinding(binding)
+        helper.assertBinding(binding)
     }
 
     /**
@@ -73,7 +51,7 @@ class RunningGroovyTest extends GroovyTestCase
      */
     void testGroovyClassLoader()
     {
-        useClassLoader(groovyScriptOne)
+        helper.useClassLoader(groovyScriptOne)
     }
 
     /*****************************************************************************************************************/
@@ -114,7 +92,7 @@ class RunningGroovyTest extends GroovyTestCase
      */
     void testGroovyScriptEngineWithClass()
     {
-        Binding binding = createBinding()
+        Binding binding = helper.createBinding()
         def gse = new GroovyScriptEngine(new File('.').toURL())
         println "testGroovyScriptEngineWithClass = "+gse.run(groovyClassOne, binding)
         println binding.variables
@@ -126,7 +104,7 @@ class RunningGroovyTest extends GroovyTestCase
      */
     void testGroovyClassLoaderWithClass()
     {
-        useClassLoader(groovyClassOne)
+        helper.useClassLoader(groovyClassOne)
     }
 
 
@@ -134,43 +112,48 @@ class RunningGroovyTest extends GroovyTestCase
     /* Tests against uncompiled Java classes.*/
 
     /**
-     *
+     * Can call the java file, but cannot pass in any parameters to the main method. 
      */
     void testGroovyShellOnJava()
     {
-        Binding binding = createBinding()
+        Binding binding = helper.createBinding()
         def shell = new GroovyShell(binding)
-        shell.evaluate(new File(javaFile))
+        shell.evaluate(new File(javaFileOne))
         assert binding.getVariables().size() == 2
     }
 
     /**
-     *
+     * Can call the java file, but cannot pass in any parameters to the main method.
      */
     void testGroovyScriptEngineOnJava()
     {
-        Binding binding = createBinding()
+        Binding binding = helper.createBinding()
         def gse = new GroovyScriptEngine(new File('.').toURL())
-        gse.run(javaFile, binding)
+        gse.run(javaFileOne, binding)
         assert binding.getVariables().size() == 2
     }
 
     /**
-     * 
+     * Dynamically compile, instantiate, inspect and call methods on a POJO.
      */
     void testGroovyClassLoaderOnJava()
     {
         ClassLoader parent = getClass().getClassLoader();
         GroovyClassLoader loader = new GroovyClassLoader(parent);
-        Class javaClass = loader.parseClass(new File(javaFile));
+        Class javaClass = loader.parseClass(new File(javaFileOne));
 
         def groovyObject = javaClass.newInstance();
-        def binding = createBinding()
+        def binding = helper.createBinding()
         groovyObject.binding = binding
-        groovyObject.args = new ArrayList(args)
-        groovyObject.invokeMethod("main", new ArrayList(args) as String[]);
-        groovyObject.invokeMethod("run", null);
-        assertBinding(binding)
+        if(groovyObject.metaClass.respondsTo(groovyObject, 'run'))
+        {
+            groovyObject.invokeMethod("run", null);
+            helper.assertBinding(binding)
+        }
+        if(groovyObject.metaClass.respondsTo(groovyObject, 'main'))
+        {
+            groovyObject.invokeMethod("main", new ArrayList(args) as String[]);
+        }
     }
 
     /**
@@ -178,55 +161,56 @@ class RunningGroovyTest extends GroovyTestCase
      */
     void testGroovyJavaCall()
     {
-        def proc = """groovy $javaFile Hello World""".execute()
+        def proc = """groovy $javaFileOne Hello World""".execute()
         proc.waitFor()
         assertTrue(proc.text.contains('cannot compile file with .java extension'))
     }
 
+
+
     /**
-     * Parse, instantiate and run the Class parsed from fileName
-     * @param fileName  the fileName to parse and run
-     */
-    private def useClassLoader(fileName)
+    * If the Java file extends Script, all is good in the world.
+    */
+    void testGroovyJavaExtendsScript()
     {
-        ClassLoader parent = getClass().getClassLoader();
-        GroovyClassLoader loader = new GroovyClassLoader(parent);
+        Binding binding = helper.createBinding()
+        def shell = new GroovyShell(binding)
+        shell.evaluate(new File(javaFileTwo))
+        helper.assertBinding(binding)
+    }
 
-        Class groovyClass = loader.parseClass(new File(fileName));
+    /*****************************************************************************************************************/
+    /* Tests against compiled code. */
 
-        Binding binding = createBinding()
-        GroovyObject groovyObject = (GroovyObject) groovyClass.newInstance();
-        groovyObject.binding = binding
-        groovyObject.invokeMethod("run", null);
-        assertBinding(binding)
+    /**
+     * Test that a compiled script can expose data in the Binding.
+     */
+    void testCompiledGroovyScript()
+    {
+        Binding binding = helper.createBinding()
+        new TestScriptTwo(binding).run()
+        helper.assertBinding(binding)
     }
 
     /**
-     * Create a Binding with a single parameter to be passed to scripts and an 'out' Writer to redirect console output.
+     * Test that a compiled groovy class can expose data in the Binding. Script behaviour is simulated by
+     * implementing a 'run' method and supplying a constructor with a Binding param.
      */
-    private Binding createBinding()
+    void testCompiledGroovyClass()
     {
-        Binding binding = new Binding()
-        def sWriter = new StringWriter()
-        def pWriter = new PrintWriter(sWriter)
-        binding.setVariable ('args', new ArrayList(args))
-        binding.setVariable ('out', pWriter)
-        return binding
+        Binding binding = helper.createBinding()
+        new TestClassTwo(binding).run()
+        helper.assertBinding(binding)
     }
 
     /**
-     * Assert that the expected 'common' actions are done with the Binding by each of the use cases.
-     * The original 'args' should be as expected.
-     * A copy of 'args' should have been placed in the Binding during execution.
-     * The 'result' should be the concatentation of 'args' separated by spaces.
+     * Test that a compiled groovy class extending Script is a nice marriage of both worlds.
      */
-    private def assertBinding(Binding binding)
+    void testCompiledGroovyClassExtendsScript()
     {
-        assert binding.variables.size() == 4
-        assert binding.variables.args.value[0].toString() == args[0]
-        assert binding.variables.args.value[1].toString() == args[1]
-        assert binding.variables.result.value.toString() == args.join(' ')
-        assert binding.variables.myArgs.value[0].toString() == args[0]
-        assert binding.variables.myArgs.value[1].toString() == args[1]
+        Binding binding = helper.createBinding()
+        new TestClassThree(binding:binding).run()
+        helper.assertBinding(binding)
     }
+
 }

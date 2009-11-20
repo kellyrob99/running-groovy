@@ -9,8 +9,7 @@ import java.util.Properties;
 public class TestJavaOne
 {
     Binding binding;
-    List args;
-    
+
     public TestJavaOne()
     {
         binding = new Binding();
@@ -23,7 +22,7 @@ public class TestJavaOne
 
     public Object run()
     {
-        System.out.println("Got run in Javaland! args = " + args);
+        List args = (List) binding.getVariable("args");
         binding.setVariable("myArgs", args);
         binding.setVariable("result", args.get(0) + " " + args.get(1));
         return binding;    
@@ -33,6 +32,7 @@ public class TestJavaOne
     {
         System.out.println("Got called in Javaland! args = " + args);
 
+        //alternative way to feed parameters
         Properties props = new Properties();
         URL url = ClassLoader.getSystemResource("testJavaOne.properties");
         try
