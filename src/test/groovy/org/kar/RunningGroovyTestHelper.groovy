@@ -11,7 +11,7 @@ class RunningGroovyTestHelper
      * Parse, instantiate and run the Class parsed from fileName
      * @param fileName  the fileName to parse and run
      */
-    private def useClassLoader(fileName)
+    public def useClassLoader(fileName)
     {
         ClassLoader parent = getClass().getClassLoader();
         GroovyClassLoader loader = new GroovyClassLoader(parent);
@@ -28,7 +28,7 @@ class RunningGroovyTestHelper
     /**
      * Create a Binding with a single parameter to be passed to scripts and an 'out' Writer to redirect console output.
      */
-    private Binding createBinding()
+    public Binding createBinding()
     {
         Binding binding = new Binding()
         def sWriter = new StringWriter()
@@ -44,7 +44,7 @@ class RunningGroovyTestHelper
      * A copy of 'args' should have been placed in the Binding during execution.
      * The 'result' should be the concatentation of 'args' separated by spaces.
      */
-    private def assertBinding(Binding binding)
+    public def assertBinding(Binding binding)
     {
         assert binding.variables.size() == 4
         assert binding.variables.args.value[0].toString() == args[0]

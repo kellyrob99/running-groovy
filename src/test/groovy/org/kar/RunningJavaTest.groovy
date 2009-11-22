@@ -36,8 +36,7 @@ class RunningJavaTest extends GroovyTestCase
      */
     void testGroovyClassLoaderOnJava()
     {
-        ClassLoader parent = getClass().getClassLoader();
-        GroovyClassLoader loader = new GroovyClassLoader(parent);
+        GroovyClassLoader loader = new GroovyClassLoader();
         Class javaClass = loader.parseClass(new File(javaFileOne));
 
         def groovyObject = javaClass.newInstance();
