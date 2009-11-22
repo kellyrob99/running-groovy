@@ -58,7 +58,7 @@ class RunningJavaTest extends GroovyTestCase
      */
     void testGroovyJavaCall()
     {
-        def proc = """groovy $javaFileOne Hello World""".execute()
+        def proc = "groovy $javaFileOne Hello World".execute()
         proc.waitFor()
         assertTrue(proc.text.contains('cannot compile file with .java extension'))
     }

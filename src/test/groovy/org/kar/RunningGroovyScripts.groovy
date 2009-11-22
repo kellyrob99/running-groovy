@@ -21,7 +21,7 @@ class RunningGroovyScriptsTest extends GroovyTestCase
      */
     void testGroovyCall()
     {
-        def proc = """groovy $groovyScriptOne Hello World""".execute()
+        def proc = "groovy $groovyScriptOne Hello World".execute()
         proc.waitFor()
         def result = proc.text.split()
         assert result[0] == 'Hello'

@@ -31,7 +31,7 @@ class RunningGroovyClassesTest extends GroovyTestCase
      */
     void testGroovyCallWithClass()
     {
-        def proc = """groovy $groovyClassOne Hello World""".execute()
+        def proc = "groovy $groovyClassOne Hello World".execute()
         proc.waitFor()
         def result = proc.text.split()
         assert result[0] == 'Hello'
